@@ -308,10 +308,7 @@ public class PracticalTest02v1MainActivity extends AppCompatActivity {
 
         return out;
     }
-
-    // cum pot testa functionalitatea suportata de server folsind un utilitar in linia de comanda pe telefon de ex telnet sau busybox nc. de ex b
-
-     // Ex.3c:
+  // Ex.3c:
     private String formatForClient(List<String> suggestions) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < suggestions.size(); i++) {
