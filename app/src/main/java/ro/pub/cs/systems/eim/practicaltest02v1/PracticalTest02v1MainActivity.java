@@ -57,13 +57,7 @@ public class PracticalTest02v1MainActivity extends AppCompatActivity {
 
         startServerButton.setOnClickListener(v -> {
             int port = parsePort();
-            Log.i(TAG, "S2: Apasat START server, port=" + port);
 
-            if (port <= 0) {
-                toast("Port invalid");
-
-                return;
-            }
 
             serverThread = new ServerThread(port);
             serverThread.start();
@@ -78,11 +72,6 @@ public class PracticalTest02v1MainActivity extends AppCompatActivity {
         requestButton.setOnClickListener(v -> {
             int port = parsePort();
             String prefix = prefixEditText.getText().toString();
-
-            if (port <= 0) {
-                toast("Port invalid");
-                return;
-            }
 
             new ClientThread("127.0.0.1", port, prefix).start();
         });
@@ -142,19 +131,18 @@ public class PracticalTest02v1MainActivity extends AppCompatActivity {
             try {
                 serverSocket = new ServerSocket(port);
                 while (running) {
-                    Log.d(TAG, "S3c: Astept client");
                     Socket client = serverSocket.accept();
-                    Log.i(TAG, "S3c: Client conectat de la " + client.getInetAddress() + ":" + client.getPort());
+                    Log.i(TAG, "3c: Client conectat de la " + client.getInetAddress() + ":" + client.getPort());
 
                     new CommunicationThread(client).start();
-                    Log.i(TAG, "S3c: Pornit CommunicationThread pentru client");
+                    Log.i(TAG, "3c: Pornit CommunicationThread pentru client");
                 }
             } catch (Exception e) {
-                Log.e(TAG, "S3c: ServerThread error: " + e.getMessage(), e);
+                Log.e(TAG, "3c: ServerThread error: " + e.getMessage(), e);
             } finally {
                 try {
                     if (serverSocket != null) serverSocket.close();
-                    Log.i(TAG, "S3c: ServerSocket inchis (finally)");
+                    Log.i(TAG, "3c: ServerSocket inchis");
                 } catch (Exception ignored) {}
             }
         }
@@ -174,33 +162,31 @@ public class PracticalTest02v1MainActivity extends AppCompatActivity {
             try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                  PrintWriter out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true)) {
 
-                // Ex.3c (partea de comunicatie): primire parametru de la client =====
-                Log.i(TAG, "S3c: Citesc prefix de la client  ...");
+                Log.i(TAG, "3c: Citesc prefix de la client  ...");
                 String prefix = in.readLine();
                 if (prefix == null) prefix = "";
                 prefix = prefix.trim();
-                Log.i(TAG, "S3c: Prefix primit=\"" + prefix + "\"");
+                Log.i(TAG, "3c: Prefix primit=\"" + prefix + "\"");
 
                 // Ex.3a:
                 String raw = fetchAutocompleteRaw(prefix);
-                Log.d(TAG, "S3a: Raspuns brut " +
+                Log.d(TAG, "3a: Raspuns brut " +
                         (raw.length() > 200 ? raw.substring(0, 200) : raw));
 
                 //Ex.3b:
-                Log.i(TAG, "S3b: Parsez sugestiile din raspuns");
+                Log.i(TAG, "3b: Parsez sugestiile din raspuns");
                 List<String> suggestions = parseSuggestions(raw);
                 if (!suggestions.isEmpty()) {
-                    Log.d(TAG, "S3b: Primele sugestii=" + suggestions.subList(0, Math.min(5, suggestions.size())));
+                    Log.d(TAG, "3b: Primele sugestii=" + suggestions.subList(0, Math.min(5, suggestions.size())));
                 }
 
                 //  Ex.3c: trimiterea informatiilor catre client
                 String formatted = formatForClient(suggestions);
-                Log.i(TAG, "S3c: Trimit catre client format \"" +
+                Log.i(TAG, "3c: Trimit catre client format \"" +
                         (formatted.length() > 200 ? formatted.substring(0, 200) : formatted).replace("\n","\\n") + "\"");
 
                 out.print(formatted);
                 out.flush();
-                Log.i(TAG, "S3c: Trimitere finalizata (flush)");
 
             } catch (Exception e) {
                 Log.e(TAG, "error: " + e.getMessage(), e);
@@ -236,9 +222,8 @@ public class PracticalTest02v1MainActivity extends AppCompatActivity {
 
                 out.println(prefix);
                 out.flush();
-                Log.i(TAG, "CLIENT: prefix trimis (flush)");
 
-                Log.i(TAG, "CLIENT: citesc raspuns de la server pana se inchide conexiunea...");
+                Log.i(TAG, "CLIENT: citesc raspuns de la server pana se inchide ");
                 StringBuilder sb = new StringBuilder();
                 String line;
                 while ((line = in.readLine()) != null) {
@@ -260,16 +245,10 @@ public class PracticalTest02v1MainActivity extends AppCompatActivity {
         }
     }
 
-    // ============================================================
-    // ======================= WEB + PARSARE ======================
-    // ============================================================
-
-
-     // Ex.3a:primirea informatiilor de la serviciul web.
+     // Ex.3a:primirea informatiilor
     private String fetchAutocompleteRaw(String prefix) throws Exception {
         String q = URLEncoder.encode(prefix, "UTF-8");
         String urlStr = "https://www.google.com/complete/search?client=chrome&q=" + q;
-
         Log.d(TAG, "S3a: URL=" + urlStr);
 
         HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
@@ -279,41 +258,37 @@ public class PracticalTest02v1MainActivity extends AppCompatActivity {
         conn.setRequestProperty("User-Agent", "Mozilla/5.0");
 
         int code = conn.getResponseCode();
-        Log.i(TAG, "S3a: HTTP responseCode=" + code);
+        Log.i(TAG, " HTTP responseCode=" + code);
 
         try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = br.readLine()) != null) sb.append(line);
-            Log.i(TAG, "S3a: HTTP body citit, chars=" + sb.length());
+            Log.i(TAG, "S3a: HTTp citit, chars=" + sb.length());
             return sb.toString();
         } finally {
             conn.disconnect();
-            Log.d(TAG, "S3a: conn.disconnect()");
         }
     }
 
-     // Ex.3b: Parsare sugestii.
+     // Ex.3b: Parsare sugestii
 
     private List<String> parseSuggestions(String raw) {
         List<String> out = new ArrayList<>();
 
-        // --- parsare JSON standard ---
+
         try {
-            Log.d(TAG, "S3b: Incerc parsare JSON standard (JSONArray)");
             JSONArray root = new JSONArray(raw);
             JSONArray arr = root.getJSONArray(1);
             for (int i = 0; i < arr.length(); i++) {
                 String s = arr.optString(i, "").trim();
                 if (!s.isEmpty()) out.add(s);
             }
-            Log.i(TAG, "S3b: JSON standard OK, sugestii=" + out.size());
             if (!out.isEmpty()) return out;
         } catch (Exception e) {
-            Log.w(TAG, "S3b: JSON standard a esuat -> " + e.getMessage());
+            Log.w(TAG, " JSON esuat -> " + e.getMessage());
         }
 
-        // --- fallback indexOf ---
         Log.d(TAG, "S3b: Fallback indexOf(\"name\")");
         final String key = "\"name\":\"";
         int idx = 0;
@@ -331,14 +306,12 @@ public class PracticalTest02v1MainActivity extends AppCompatActivity {
             idx = end + 1;
         }
 
-        Log.i(TAG, "S3b: Fallback indexOf OK, sugestii=" + out.size());
         return out;
     }
 
+    // cum pot testa functionalitatea suportata de server folsind un utilitar in linia de comanda pe telefon de ex telnet sau busybox nc. de ex b
 
-     // Ex.3c: Format pentru client:
-
-
+     // Ex.3c:
     private String formatForClient(List<String> suggestions) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < suggestions.size(); i++) {
